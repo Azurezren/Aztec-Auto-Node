@@ -157,51 +157,40 @@ If you encounter issues:
    - Port 8080 (HTTP)
    - Port 9000 (WebSocket)
 
-## Security Best Practices
+## Earning Apprentice Role
 
-1. **Private Key Security**
-   - Never share your validator private key
-   - Store it in a secure location
-   - Consider using hardware wallets for key management
+To earn the Apprentice Role, follow these steps:
 
-2. **RPC URL Security**
-   - Keep your RPC URLs secure
-   - Use rate-limited endpoints
-   - Consider using private RPC services
+1. Run the following command to get your block number and sync proof:
 
-3. **System Security**
-   - Regularly update your system
-   - Keep Docker and dependencies updated
-   - Run in a secure environment
-   - Use strong passwords for any third-party services
+```bash
+BLOCK=$(curl -s -X POST -H 'Content-Type: application/json' \
+  -d '{"jsonrpc":"2.0","method":"node_getL2Tips","params":[],"id":67}' \
+  http://localhost:8080 | jq -r ".result.proven.number")
 
-4. **Data Security**
-   - Back up your node data regularly
-   - Consider using encrypted storage
-   - Implement proper access controls
+if [[ -z "$BLOCK" || "$BLOCK" == "null" ]]; then
+  echo "❌ Failed to get block number"
+else
+  echo "✅ Block Number: $BLOCK"
+  echo "🔗 Sync Proof:"
+  curl -s -X POST -H 'Content-Type: application/json' \
+    -d "{\"jsonrpc\":\"2.0\",\"method\":\"node_getArchiveSiblingPath\",\"params\":[\"$BLOCK\",\"$BLOCK\"],\"id\":67}" \
+    http://localhost:8080 | jq -r ".result"
+fi 
+```
 
-## Error Handling
+2. Copy and paste the following in Discord [Operators | Start Here](https://discord.gg/aztec):
 
-The setup script includes comprehensive error handling for:
+```
+/operator start your-address: block-number: proof:
+```
 
-1. Network connectivity issues
-   - Automatic retries for connection failures
-   - Connection validation before proceeding
+**Just replace:**
+- `your-address` → your operator Ethereum address
+- `block-number` → the block number shown as ✅ Block Number
+- `proof:` → the sync proof array shown after 🔗 Sync Proof:
 
-2. Docker installation failures
-   - Detailed error messages
-   - Suggested fixes
-   - Automatic cleanup of failed installations
-
-3. Configuration errors
-   - Input validation
-   - Error recovery options
-   - User confirmation prompts
-
-4. API rate limiting
-   - Automatic detection
-   - Suggested solutions
-   - Retry mechanisms
+[Discord Link](https://discord.gg/aztec)
 
 ## Additional Resources
 
