@@ -150,26 +150,14 @@ validate_rpc_url() {
 validate_private_key() {
     local key="$1"
     
-    # Check if it's a valid hex string of the right length
-    if [[ ! "$key" =~ ^0x[0-9a-fA-F]{64}$ ]]; then
-        if [[ ! "$key" =~ ^[0-9a-fA-F]{64}$ ]]; then
-            log_warn "Private key format may be invalid. Expected 0x prefix followed by 64 hex characters or 64 hex characters."
-            read -p "Do you want to continue anyway? (y/n) " -n 1 -r
-            echo
-            if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-                return 1
-            fi
-            # Add 0x prefix if missing
-            echo "0x$key"
-            return 0
-        else
-            # Add 0x prefix if missing
-            log_warn "Adding 0x prefix to private key."
-            echo "0x$key"
-            return 0
-        fi
+    # Add 0x prefix if missing
+    if [[ ! "$key" =~ ^0x ]]; then
+        log_warn "Adding 0x prefix to private key."
+        echo "0x${key}"
+        return 0
     fi
     
+    # Return as-is otherwise
     echo "$key"
     return 0
 }
