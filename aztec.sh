@@ -146,18 +146,37 @@ validate_rpc_url() {
     return 0
 }
 
+# Generate Ethereum private key
+generate_private_key() {
+    log_info "Generating a secure Ethereum private key..."
+    
+    # Use Node.js to generate a secure random private key
+    local private_key
+    private_key=$(node -e "console.log('0x' + require('crypto').randomBytes(32).toString('hex'))")
+    
+    echo "$private_key"
+}
+
 # Validate private key format
 validate_private_key() {
     local key="$1"
     
-    # Add 0x prefix if missing
-    if [[ ! "$key" =~ ^0x ]]; then
-        log_warn "Adding 0x prefix to private key."
-        echo "0x${key}"
-        return 0
+    # Check if the key is empty
+    if [[ -z "$key" ]]; then
+        return 1
     fi
     
-    # Return as-is otherwise
+    # Add 0x prefix if missing
+    if [[ ! "$key" =~ ^0x ]]; then
+        key="0x${key}"
+    fi
+    
+    # Check if the key has the correct length (0x + 64 hex chars)
+    if [[ ! "$key" =~ ^0x[0-9a-fA-F]{64}$ ]]; then
+        return 1
+    fi
+    
+    # Return the validated key
     echo "$key"
     return 0
 }
@@ -216,11 +235,37 @@ collect_config() {
         validate_rpc_url "$BLOB_URL" "Blob Sink" || BLOB_URL=""
     fi
     
+    # Improved private key handling
     while true; do
-        read -p "▶️ Validator Private Key: " VALIDATOR_PRIVATE_KEY
-        VALIDATOR_PRIVATE_KEY=$(validate_private_key "$VALIDATOR_PRIVATE_KEY")
-        if [[ $? -eq 0 ]]; then
+        echo -e "\n🔑 Validator Private Key Options:"
+        echo "  1. Generate a new private key automatically (recommended)"
+        echo "  2. Enter your own private key"
+        read -p "Choose an option (1/2): " KEY_OPTION
+        
+        if [[ "$KEY_OPTION" == "1" ]]; then
+            # Generate a new private key
+            VALIDATOR_PRIVATE_KEY=$(generate_private_key)
+            log_info "Generated private key: $VALIDATOR_PRIVATE_KEY"
+            
+            # Save key to a file for backup
+            echo "$VALIDATOR_PRIVATE_KEY" > validator_key.txt
+            chmod 600 validator_key.txt
+            log_info "Private key saved to validator_key.txt (keep this file secure!)"
             break
+            
+        elif [[ "$KEY_OPTION" == "2" ]]; then
+            # Ask user for private key
+            read -p "▶️ Enter your Validator Private Key: " USER_KEY
+            VALIDATOR_PRIVATE_KEY=$(validate_private_key "$USER_KEY")
+            
+            if [[ $? -eq 0 ]]; then
+                log_info "Using private key: $VALIDATOR_PRIVATE_KEY"
+                break
+            else
+                log_error "Invalid private key format. It should be a 64-character hex string with optional 0x prefix."
+            fi
+        else
+            log_warn "Invalid option. Please choose 1 or 2."
         fi
     done
     
@@ -246,7 +291,7 @@ create_config_files() {
     # Create data directory
     mkdir -p "$DATA_DIR"
     
-    # Create .env file (keeping original permission approach)
+    # Create .env file with proper formatting (one variable per line)
     cat > .env <<EOF
 ETHEREUM_HOSTS="$ETH_RPC"
 L1_CONSENSUS_HOST_URLS="$CONS_RPC"
